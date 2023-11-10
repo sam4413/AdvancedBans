@@ -11,7 +11,9 @@
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" SharedSizeGroup="Labels"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="348*"/>
+            <ColumnDefinition Width="86*"/>
+            <ColumnDefinition Width="265*"/>
             <ColumnDefinition Width="Auto" SharedSizeGroup="Buttons"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -21,19 +23,32 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Column="0" Grid.Row ="0" VerticalAlignment="Center" Text="AdvancedBans" FontWeight="Bold" FontSize="16" Grid.ColumnSpan="2" Margin="5"/>
+        <TextBlock Grid.Column="0" Grid.Row ="0" VerticalAlignment="Center" Text="AdvancedBans" FontWeight="Bold" FontSize="22" Grid.ColumnSpan="4" Margin="5,5,5,4"/>
 
-        <TextBlock Grid.Column="0" Grid.Row ="1" VerticalAlignment="Center" Text="String Property" Margin="5"/>
-        <TextBox Name="StringProperty" Grid.Column="1" Grid.Row ="1" Grid.ColumnSpan="2" Margin="5" Text="{Binding StringProperty}"/>
+        <TextBlock Grid.Column="0" Grid.Row ="1" VerticalAlignment="Center" Text="LAN Address" Margin="5,10,5,6"/>
+        <TextBox Name="StringProperty" Grid.Column="1" Grid.Row ="1" Grid.ColumnSpan="1" Margin="5,6,5,3" Text="{Binding LocalAddress}"/>
 
-        <TextBlock Grid.Column="0" Grid.Row ="2" VerticalAlignment="Center" Text="Int Property" Margin="5"/>
-        <TextBox Name="IntProperty" Grid.Column="1" Grid.Row ="2" Grid.ColumnSpan="2" Margin="5" Text="{Binding IntProperty}"/>
-        
-        <TextBlock Grid.Column="0" Grid.Row ="3" VerticalAlignment="Center" Text="Bool Property" Margin="5"/>
-        <CheckBox Name="BoolProperty" Grid.Column="1" Grid.Row ="3" Grid.ColumnSpan="2" Margin="5" IsChecked="{Binding BoolProperty}"/>
+        <TextBlock Grid.Column="0" Grid.Row ="2" VerticalAlignment="Center" Text="MySQL Port" Margin="5,11,5,5"/>
+        <TextBox Name="IntProperty" Grid.Column="1" Grid.Row ="2" Grid.ColumnSpan="1" Margin="5,7,5,2" Text="{Binding Port}"/>
 
-        <Button Grid.Column="2" Grid.Row="4" Content="Save Config" Margin="5" Click="SaveButton_OnClick"></Button>
+        <TextBlock Grid.Column="0" Grid.Row ="3" VerticalAlignment="Center" Text="Username" Margin="5,12,5,4"/>
+        <TextBox Name="StringProperty2" Grid.Column="1" Grid.Row ="3" Grid.ColumnSpan="1" Margin="5,8,5,1" Text="{Binding Username}"/>
+
+        <TextBlock Grid.Column="0" Grid.Row ="4" VerticalAlignment="Center" Text="Database Name" Margin="5,13,5,3"/>
+        <TextBox Name="StringProperty3" Grid.Column="1" Grid.Row ="4" Grid.ColumnSpan="1" Margin="5,9,5,0" Text="{Binding DatabaseName}"/>
+
+        <TextBlock Grid.Column="0" Grid.Row ="5" VerticalAlignment="Center" Text="Scanning Interval" Margin="5,16,5,5"/>
+        <TextBox Name="StringProperty4" Grid.Column="1" Grid.Row ="5" Grid.ColumnSpan="1" Margin="5,10,5,5" Text="{Binding ScanningInt}"/>
+
+        <TextBlock Grid.Column="0" Grid.Row ="6" VerticalAlignment="Center" Text="Enabled" Margin="5,16,5,5"/>
+        <CheckBox Name="Enabled" Grid.Column="1" Grid.Row ="6" Grid.ColumnSpan="1" Margin="5,10,5,5" IsChecked="{Binding Enabled}" Grid.RowSpan="1"/>
+
+        <Button Content="Save Config" Click="SaveButton_OnClick" Margin="5,10,5,5" Grid.Column="2" Grid.Row="6"/>
+
+        <TextBlock Grid.Column="1" Grid.Row ="7" VerticalAlignment="Center" Margin="5,10,5,15" Height="200" Grid.ColumnSpan="3"><Run Foreground="Red" FontWeight="Bold" FontSize="14" Text="The ban hammer is in your hands. "/><LineBreak/><Run Text="Take control of your bans. Temp ban users, ban users with a reason, and more!"/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="In-Game Commands"/><LineBreak/><Run Text="!ab ban &lt;user&gt; &lt;reason&gt; - Permanently bans a user."/><LineBreak/><Run Text="!ab tempban &lt;user/ingame-name&gt; &lt;duration in days&gt; &lt;reason&gt; - Temp-ban a user "/><LineBreak/><Run Text="!ab unban &lt;user&gt; - Unban a user."/><LineBreak/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="Important Database Info"/><LineBreak/><Run Text="Requires a MySQL Database to function."/><LineBreak/><Run FontWeight="Bold" Text="Do not forward the MySQL port! Doing so will open vulnerabilities for hackers!"/><LineBreak/><Run FontWeight="Bold"/><LineBreak/><Run FontWeight="Bold" Text="Wiki is on Github: "/><Run Foreground="Blue" Text="https://github.com/sam4413/AdvancedBans"/></TextBlock>
     </Grid>
 </UserControl>

@@ -1,4 +1,5 @@
 ﻿using NLog;
+using Sandbox.Engine.Multiplayer;
 using System;
 using System.IO;
 using System.Windows.Controls;
@@ -8,6 +9,10 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
+using MySql.Data.MySqlClient;
+using Sandbox.Game.Entities.Blocks;
+using Sandbox.Game.World;
+using Sandbox.ModAPI.Ingame;
 
 namespace AdvancedBans
 {
@@ -23,6 +28,7 @@ namespace AdvancedBans
 
         private Persistent<AdvancedBansConfig> _config;
         public AdvancedBansConfig Config => _config?.Data;
+        private int TickCount = 0;
 
         public override void Init(ITorchBase torch)
         {
@@ -37,6 +43,23 @@ namespace AdvancedBans
                 Log.Warn("No session manager loaded!");
 
             Save();
+            //Time for some funky DB Stuff
+
+            string DBUser = Config.Username;
+            string DBAddress = Config.LocalAddress;
+            string DBName = Config.DatabaseName;
+            int DBPort = Config.Port;
+
+            try
+            {
+                Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser);
+                MyDatabase.CreateDatabase();
+                MyDatabase.CreateDatabaseStructure();
+            }
+            catch (Exception e)
+            {
+                Log.Fatal($"Cannot start up AdvancedBans. Is {Config.Port} taken?\n" + e);
+            }
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState state)
@@ -93,5 +116,27 @@ namespace AdvancedBans
                 Log.Warn(e, "Configuration failed to save");
             }
         }
+        public override void Update()
+        {
+            base.Update();
+            if (Config.Enabled)
+            {
+                if (TickCount >= Config.ScanningInt)
+                {
+
+                    TickCount = 0;
+                    string DBUser = Config.Username;
+                    string DBAddress = Config.LocalAddress;
+                    string DBName = Config.DatabaseName;
+                    int DBPort = Config.Port;
+                    Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser);
+                    Log.Warn("Checking expired bans...");
+                    MyDatabase.CheckAndUnbanExpiredBans();
+                } else {
+                    TickCount++;
+                }
+            }
+        }
     }
 }
+
