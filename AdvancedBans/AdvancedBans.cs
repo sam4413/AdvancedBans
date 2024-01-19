@@ -1,6 +1,8 @@
 ﻿using NLog;
-using Sandbox.Engine.Multiplayer;
 using System;
+using System.Net;
+using System.Text;
+using System.Web;
 using System.IO;
 using System.Windows.Controls;
 using Torch;
@@ -9,14 +11,11 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
-using MySql.Data.MySqlClient;
-using Sandbox.Game.Entities.Blocks;
-using Sandbox.Game.World;
-using Sandbox.ModAPI.Ingame;
+using AdvancedBans.AdvancedBans;
 
 namespace AdvancedBans
 {
-    public class AdvancedBans : TorchPluginBase, IWpfPlugin
+    public class AdvancedBansPlugin : TorchPluginBase, IWpfPlugin
     {
 
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
@@ -36,6 +35,9 @@ namespace AdvancedBans
 
             SetupConfig();
 
+            WebManager MyWebManager = new WebManager("localhost", "8000");
+            MyWebManager.StartWebManager();
+
             var sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
             if (sessionManager != null)
                 sessionManager.SessionStateChanged += SessionChanged;
@@ -43,6 +45,9 @@ namespace AdvancedBans
                 Log.Warn("No session manager loaded!");
 
             Save();
+            //Webserver stuff
+
+
             //Time for some funky DB Stuff
 
             string DBUser = Config.Username;
@@ -132,11 +137,12 @@ namespace AdvancedBans
                     Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser);
                     Log.Warn("Checking expired bans...");
                     MyDatabase.CheckAndUnbanExpiredBans();
-                } else {
+                }
+                else
+                {
                     TickCount++;
                 }
             }
         }
     }
 }
-

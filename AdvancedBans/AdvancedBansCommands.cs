@@ -10,7 +10,7 @@ namespace AdvancedBans
     {
         Database MyDatabase = new Database(Database.DBName, Database.DBAddress, Database.DBPort, Database.DBUser);
 
-        public AdvancedBans Plugin => (AdvancedBans)Context.Plugin;
+        public AdvancedBansPlugin Plugin => (AdvancedBansPlugin)Context.Plugin;
 
         [Command("help", "View help for AdvancedBans.")]
         [Permission(MyPromoteLevel.Admin)]
@@ -19,12 +19,13 @@ namespace AdvancedBans
             Context.Respond("insert help here");
         }
 
+
         [Command("tempban", "Tempban a user.")]
         [Permission(MyPromoteLevel.Admin)]
-        public void AB_TempBan(ulong steamid, string date, string reason )
+        public void AB_TempBan(ulong steamid, string date, string reason)
         {
             MyDatabase.AddUser(steamid, date, reason, false);
-            Context.Respond("child tempbanned "+steamid);
+            Context.Respond("child tempbanned " + steamid);
             Context.Respond($"The child will be unbanned at {date}");
         }
 
@@ -42,20 +43,13 @@ namespace AdvancedBans
             MyDatabase.RemoveUser(BanNumber);
             Context.Respond("child unbanned " + BanNumber);
         }
-
     }
 
-    [Category("advancedbans")]
-    public class AdvancedBansHelp : CommandModule
+    public class AdvancedBansCommandsOverride : CommandModule
     {
+        Database MyDatabase = new Database(Database.DBName, Database.DBAddress, Database.DBPort, Database.DBUser);
+        public AdvancedBansPlugin Plugin => (AdvancedBansPlugin)Context.Plugin;
 
-        public AdvancedBans Plugin => (AdvancedBans)Context.Plugin;
-
-        [Command("help", "View help for AdvancedBans.")]
-        [Permission(MyPromoteLevel.Admin)]
-        public void Test()
-        {
-            Context.Respond("insert help here");
-        }
+        
     }
 }

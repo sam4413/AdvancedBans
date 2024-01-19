@@ -8,7 +8,6 @@ using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using NLog;
 using Sandbox.Engine.Multiplayer;
-using Sandbox.Game;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
@@ -22,7 +21,7 @@ using VRage.ModAPI;
 
 namespace AdvancedBans
 {
-    class Database
+    public class Database
     {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
@@ -140,13 +139,12 @@ COMMIT;";
                         string expireDateString = reader["ExpireDate"].ToString();
                         int isPermanent = Convert.ToInt32(reader["IsPermanent"]);
                         int isExpired = Convert.ToInt32(reader["IsExpired"]);
-                        
 
-                        // Parse the ExpireDate to a DateTime object.
+
                         if (DateTime.TryParse(expireDateString, out DateTime expireDate))
                         {
                             // Compare the current date with the ExpireDate.
-                            if (DateTime.Now > expireDate && isPermanent != 1 && isExpired != 1)
+                            if (DateTime.Now > expireDate && isPermanent == 0 && isExpired == 0)
                             {
                                 ulong steamID = ulong.Parse(TempSteamID);
                                 Log.Info($"User {steamID} with Ban Number {banNumber} ban has expired.");
@@ -191,7 +189,6 @@ COMMIT;";
             {
                 connection.Open();
 
-                // Your query to insert a new record into the "bans" table.
                 string insertQuery = $"SELECT BanNumber, SteamID, Reason, ExpireDate, IsPermanent, IsExpired FROM bans WHERE SteamID = @steamid;";
 
                 MySqlCommand insertCommand = new MySqlCommand(insertQuery, connection);
@@ -233,7 +230,7 @@ COMMIT;";
         /// <param name="expireDate"></param>
         /// <param name="reason"></param>
         /// <param name="isPermanent"></param>
-        public void AddUser(ulong steamid, string expireDate, string reason, bool isPermanent)
+        public async void AddUser(ulong steamid, string expireDate, string reason, bool isPermanent)
         {
 
             string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
@@ -271,16 +268,15 @@ COMMIT;";
                         expireDate = expirationTime.ToString("yyyy-MM-dd HH:mm:ss");
                     }
                 }
-
                 string insertQuery = $"INSERT INTO `bans` (`SteamID`, `ExpireDate`, `Reason`, `IsPermanent`, `IsExpired`) VALUES ('{steamid}', '{expireDate}', '{reason}', '{permanentVal}', '0');";
 
                 MySqlCommand insertCommand = new MySqlCommand(insertQuery, connection);
 
                 int rowsAffected = insertCommand.ExecuteNonQuery();
 
-                MyMultiplayerBase.BanUser(steamid, true);
+                MyMultiplayerBase.BanUser(steamid, true); //Ban the user
 
-                Log.Info("Database structure initialized.");
+                Log.Info($"User with SteamID {steamid} banned.\nReason: {reason}.\nExpires: {expireDate}\nIs Permanent: {isPermanent}");
                 connection.Close();
                 return;
             }
@@ -313,6 +309,28 @@ COMMIT;";
 
                 Log.Info($"Removed banID: {banNumber} from Database.");
                 connection.Close();
+                return;
+            }
+            catch (MySqlException ex)
+            {
+                Log.Error("Error: " + ex.Message);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Unbans the user from the server. Retains log of the user being banned.
+        /// </summary>
+        /// <param name="banNumber"></param>
+        public void Unban(int banNumber)
+        {
+            try
+            {
+                //Log.Error("Connection to MySQL database opened successfully.");
+
+                SetExpired(banNumber);
+                //MyMultiplayerBase.BanUser();
+                Log.Info($"Unbanned Ban Number: {banNumber}.");
                 return;
             }
             catch (MySqlException ex)

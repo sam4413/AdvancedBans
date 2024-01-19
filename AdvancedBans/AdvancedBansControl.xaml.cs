@@ -6,14 +6,14 @@ namespace AdvancedBans
     public partial class AdvancedBansControl : UserControl
     {
 
-        private AdvancedBans Plugin { get; }
+        private AdvancedBansPlugin Plugin { get; }
 
         private AdvancedBansControl()
         {
             InitializeComponent();
         }
 
-        public AdvancedBansControl(AdvancedBans plugin) : this()
+        public AdvancedBansControl(AdvancedBansPlugin plugin) : this()
         {
             Plugin = plugin;
             DataContext = plugin.Config;
