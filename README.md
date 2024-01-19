@@ -44,3 +44,4 @@ This means that if you are banned, the player might be shown a ban screen of Ban
 
 `!ab history <name | steamid>` - Outputs all the times the user has been banned, if their ban is expired, when their ban will expire, and if their ban is permanent. 
 
+## Wiki is coming Soon™, in the meantime you can join the discord for help
