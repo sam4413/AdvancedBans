@@ -5,50 +5,118 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:AdvancedBans"
       mc:Ignorable="d" 
-      d:DesignHeight="450" d:DesignWidth="800">
+      d:DesignHeight="500" d:DesignWidth="1000">
 
     <Grid>
+        <TextBlock Text="AdvancedBans" FontWeight="Bold" FontSize="22" Margin="0,0,0,0" Height="29" VerticalAlignment="Top"/>
+        <TabControl HorizontalAlignment="Left" Height="456" Margin="10,44,-10,0" VerticalAlignment="Top" Width="1000" SelectionChanged="TabControl_SelectionChanged">
+            <TabItem Header="General Configuration">
+                <Grid Background="#FFE5E5E5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="33*"/>
+                        <RowDefinition Height="67*"/>
+                        <RowDefinition Height="114*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="123*"/>
+                        <ColumnDefinition Width="871*"/>
+                    </Grid.ColumnDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" SharedSizeGroup="Labels"/>
-            <ColumnDefinition Width="348*"/>
-            <ColumnDefinition Width="86*"/>
-            <ColumnDefinition Width="265*"/>
-            <ColumnDefinition Width="Auto" SharedSizeGroup="Buttons"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
 
-        <TextBlock Grid.Column="0" Grid.Row ="0" VerticalAlignment="Center" Text="AdvancedBans" FontWeight="Bold" FontSize="22" Grid.ColumnSpan="4" Margin="5,5,5,4"/>
+                    <TextBlock VerticalAlignment="Center" Margin="10,44,392,0" Height="184" Grid.Row="2" Grid.ColumnSpan="2"><Run Foreground="Red" FontWeight="Bold" FontSize="14" Text="The ban hammer is in your hands. "/><LineBreak/><Run Text="Take control of your bans. Temp ban users, ban users with a reason, and more!"/><LineBreak/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="In-Game Commands"/><LineBreak/><Run Text="!ab ban &lt;user&gt; &lt;reason&gt; - Permanently bans a user."/><LineBreak/><Run Text="!ab tempban &lt;user/ingame-name&gt; &lt;duration in days&gt; &lt;reason&gt; - Temp-ban a user "/><LineBreak/><Run Text="!ab unban &lt;user&gt; - Unban a user."/><LineBreak/><LineBreak/><Run FontWeight="Bold" Text="Wiki is on Github: "/><Run Foreground="Blue" Text="https://github.com/sam4413/AdvancedBans"/></TextBlock>
+                    <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontFamily="Gadugi" FontSize="24" Grid.ColumnSpan="2" Height="32" Width="251"><Run FontWeight="Bold" Text="General Configuration"/></TextBlock>
+                    <CheckBox Content="Enabled" HorizontalAlignment="Left" Margin="0,22,0,0" Grid.Row="1" VerticalAlignment="Top" IsChecked="{Binding Enabled}" RenderTransformOrigin="-1.5,0.733" Height="20" Grid.Column="1" Width="62"/>
+                    <TextBox HorizontalAlignment="Left" Height="23" Margin="1,47,0,0" TextWrapping="Wrap" Text="{Binding ScanningInt}" VerticalAlignment="Top" Width="120" Grid.Row="1" Grid.Column="1"/>
+                    <TextBlock Text="Scanning Interval" HorizontalAlignment="Left" Margin="17,48,0,0" VerticalAlignment="Top" Height="18" Grid.Row="1" Width="91"/>
+                    <TextBlock Text="Plugin Enabled" HorizontalAlignment="Left" Margin="17,21,0,0" VerticalAlignment="Top" Height="18" Grid.Row="1" Width="79"/>
+                    <TextBlock VerticalAlignment="Center" Margin="763,213,0,-3" Height="18" Grid.Row="2" Grid.Column="1"><Run Foreground="Black" FontWeight="Bold" FontSize="14" Text="In development"/></TextBlock>
+                    <CheckBox Content="Debug Mode (Log Spam)" HorizontalAlignment="Left" Margin="0,75,0,0" Grid.Row="1" VerticalAlignment="Top" IsChecked="{Binding Debug}" RenderTransformOrigin="-1.5,0.733" Height="20" Grid.Column="1" Checked="CheckBox_Checked_1" Width="153"/>
+                    <TextBlock Text="Debugging" HorizontalAlignment="Left" Margin="17,74,0,0" VerticalAlignment="Top" Height="18" Grid.Row="1" Width="59"/>
+                    <TextBox HorizontalAlignment="Left" Height="23" Margin="1,96,0,0" TextWrapping="Wrap" Text="{Binding BanDelay}" VerticalAlignment="Top" Width="120" Grid.Row="1" Grid.Column="1"/>
+                    <TextBlock Text="Ban Delay" HorizontalAlignment="Left" Margin="17,97,0,0" VerticalAlignment="Top" Height="18" Grid.Row="1" Width="91"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="126,100,0,0" VerticalAlignment="Top" Height="34" Grid.Row="1" Width="436" Grid.Column="1"><Run Text="Waits for x time for the user to load in in ms, to then kick them and display the "/><LineBreak/><Run Text="ban message. If using a heavy amount of mods, set this value higher."/></TextBlock>
+                    <TextBlock Text="ms" HorizontalAlignment="Left" Margin="126,48,0,0" VerticalAlignment="Top" Height="18" Grid.Row="1" Width="91" Grid.Column="1"/>
+                    <!---->
 
-        <TextBlock Grid.Column="0" Grid.Row ="1" VerticalAlignment="Center" Text="LAN Address" Margin="5,10,5,6"/>
-        <TextBox Name="StringProperty" Grid.Column="1" Grid.Row ="1" Grid.ColumnSpan="1" Margin="5,6,5,3" Text="{Binding LocalAddress}"/>
+                </Grid>
 
-        <TextBlock Grid.Column="0" Grid.Row ="2" VerticalAlignment="Center" Text="MySQL Port" Margin="5,11,5,5"/>
-        <TextBox Name="IntProperty" Grid.Column="1" Grid.Row ="2" Grid.ColumnSpan="1" Margin="5,7,5,2" Text="{Binding Port}"/>
+            </TabItem>
+            <TabItem Header="MySQL Server">
+                <Grid Background="#FFE5E5E5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="17*"/>
+                        <ColumnDefinition Width="745*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock HorizontalAlignment="Left" Margin="667,0,0,0" VerticalAlignment="Top" Height="428" Width="305" Grid.Column="1"><Run FontWeight="Bold" Text="Help:"/><LineBreak/><Run Text="You can define a new MySQL server, or you can reference "/><LineBreak/><Run Text="a MySQL server remotely. Please note, you will need to "/><LineBreak/><Run Text="have an external program run the MySQL server. "/><LineBreak/><Run Text="The plugin was tested with XAMPP, as its easy to set up. "/><LineBreak/><Run/><LineBreak/><Run Text="If you are running the database locally, just keep the"/><LineBreak/><Run Text="values as is, and the plugin will make the database "/><LineBreak/><Run Text="for you."/><LineBreak/><Run/><LineBreak/><Run Text="If your running Nexus from multiple boxes, ensure the"/><LineBreak/><Run Text="MySQL address points to your local / public address "/><LineBreak/><Run Text="where the Database is being hosted. Please note, port "/><LineBreak/><Run Text="forwarding the database is not recommended, and "/><LineBreak/><Run Text="putting a password on the database is a absolute must."/></TextBlock>
 
-        <TextBlock Grid.Column="0" Grid.Row ="3" VerticalAlignment="Center" Text="Username" Margin="5,12,5,4"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontFamily="Gadugi" FontSize="24" Height="32" Width="251" Grid.ColumnSpan="2"><Run FontWeight="Bold" Text="MySQL Server"/></TextBlock>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Height="23" Margin="108,65,0,0" TextWrapping="Wrap" Text="{Binding LocalAddress}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Address" HorizontalAlignment="Left" Margin="0,66,0,0" VerticalAlignment="Top" Height="18" Grid.Column="1"/>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Height="23" Margin="108,97,0,0" TextWrapping="Wrap" Text="{Binding Port}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Port" HorizontalAlignment="Left" Margin="0,98,0,0" VerticalAlignment="Top" Height="18" Grid.Column="1"/>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Height="23" Margin="108,130,0,0" TextWrapping="Wrap" Text="{Binding Username}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Username" HorizontalAlignment="Left" Margin="0,131,0,0" VerticalAlignment="Top" Height="18" Grid.Column="1"/>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Height="23" Margin="108,162,0,0" TextWrapping="Wrap" Text="{Binding Password}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Password" HorizontalAlignment="Left" Margin="0,163,0,0" VerticalAlignment="Top" Height="18" Grid.Column="1"/>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Height="23" Margin="108,195,0,0" TextWrapping="Wrap" Text="{Binding DatabaseName}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Database Name" HorizontalAlignment="Left" Margin="0,196,0,0" VerticalAlignment="Top" Height="18" Grid.Column="1"/>
+                    <TextBlock Text="(Set to null to disable)" HorizontalAlignment="Left" Margin="233,163,0,0" VerticalAlignment="Top" Height="18" Grid.Column="1"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Web Server">
+                <Grid Background="#FFE5E5E5">
+                    <TextBlock Text="Enable Webserver" HorizontalAlignment="Center" Margin="17,58,878,0" VerticalAlignment="Top" Height="18" Width="99"/>
+                    <CheckBox Content="Webserver" HorizontalAlignment="Left" Margin="125,58,0,0" VerticalAlignment="Top" IsChecked="{Binding Enabled}" RenderTransformOrigin="-1.5,0.733" Height="20" Checked="CheckBox_Checked_2"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontFamily="Gadugi" FontSize="24" Height="32" Width="251"><Run FontWeight="Bold" Text="Web Server"/></TextBlock>
+                    <TextBox HorizontalAlignment="Left" Height="23" Margin="125,83,0,0" TextWrapping="Wrap" Text="{Binding WebAddress}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Web Address" HorizontalAlignment="Left" Margin="17,84,0,0" VerticalAlignment="Top" Height="18"/>
+                    <TextBox HorizontalAlignment="Left" Height="23" Margin="125,115,0,0" TextWrapping="Wrap" Text="{Binding WebPort}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Web Port" HorizontalAlignment="Left" Margin="17,116,0,0" VerticalAlignment="Top" Height="18"/>
+                    <TextBox HorizontalAlignment="Left" Height="200" Margin="125,183,0,0" TextWrapping="Wrap" Text="{Binding WebBanPage}" AcceptsReturn="true" MinLines="5" VerticalScrollBarVisibility="Visible" VerticalAlignment="Top" Width="200"/>
+                    <TextBlock Text="Ban Page (HTML)" HorizontalAlignment="Left" Margin="17,184,0,0" VerticalAlignment="Top" Height="18"/>
+                    <TextBox HorizontalAlignment="Left" Height="200" Margin="450,183,0,0" TextWrapping="Wrap" Text="{Binding WebErrorPage}" AcceptsReturn="true" MinLines="5" VerticalScrollBarVisibility="Visible" VerticalAlignment="Top" Width="200"/>
+                    <TextBlock Text="Error Page (HTML)" HorizontalAlignment="Left" Margin="342,184,0,0" VerticalAlignment="Top" Height="18"/>
+                    <TextBox HorizontalAlignment="Left" Height="23" Margin="125,146,0,0" TextWrapping="Wrap" Text="{Binding WebPublicAddress}" VerticalAlignment="Top" Width="120"/>
+                    <TextBlock Text="Server IP Address" HorizontalAlignment="Left" Margin="17,147,0,0" VerticalAlignment="Top" Height="18"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="250,146,0,0" VerticalAlignment="Top" Height="37"><Run Text="Type your public IP address. If banned, this will be "/><LineBreak/><Run Text="used to redirect the user to a specified address."/></TextBlock>
+                    <TextBlock HorizontalAlignment="Left" Margin="667,0,0,0" VerticalAlignment="Top" Height="428" Width="327"><Run FontWeight="Bold" Text="Help:"/><LineBreak/><Run Text="You can start/stop a web server here as well as manage"/><LineBreak/><Run Text="the properties of it. The purpose of the web server is to "/><LineBreak/><Run Text="allow ban reasons to be displayed if the player was"/><LineBreak/><Run Text="banned / removed from the server."/><LineBreak/><Run/><LineBreak/><Run Text="The web server does not need to be on for banning to"/><LineBreak/><Run Text="work. Bans rely on the MySQL database. Without the"/><LineBreak/><Run Text="database, the Plugin will not work, and crash."/><LineBreak/><Run/><LineBreak/><Run Text="Here, you can define the landing page for when a user is "/><LineBreak/><Run Text="banned. All HTML styling is supported. There are also "/><LineBreak/><Run Text="variable flags you can pass through to display the ban "/><LineBreak/><Run Text="reasoning."/><LineBreak/><Run/><LineBreak/><Run FontWeight="Bold" Text="Note: "/><Run Text="The Torch.Server must be ran as an ADMINISTRATOR"/><LineBreak/><Run Text="in order for the WebServer to run. Ensure the port is "/><LineBreak/><Run Text="forwarded as well. For Nexus servers, it is best to keep 1"/><LineBreak/><Run Text="server running the Webserver, and the rest to keep the "/><LineBreak/><Run Text="webserver off."/><LineBreak/><Run/><LineBreak/><Run FontWeight="Bold" Text="Flags:"/><LineBreak/><Run Text="{}{{BanNumber}} "/><LineBreak/><Run Text="{}{{SteamID}} "/><LineBreak/><Run Text="{}{{ExpireDate}}"/><LineBreak/><Run Text="{}{{Reason}}"/></TextBlock>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Experimental" Margin="-2,0">
+                <Grid Background="#FFE5E5E5">
+                    <TextBlock HorizontalAlignment="Center" Margin="17,58,878,0" VerticalAlignment="Top" Height="33" Width="99"><Run Text="Enable In-Game"/><LineBreak/><Run Text="Ban Button"/></TextBlock>
+                    <CheckBox Content="In-game Ban Button" HorizontalAlignment="Left" Margin="125,58,0,0" VerticalAlignment="Top" IsChecked="{Binding AM_BanButton}" RenderTransformOrigin="-1.5,0.733" Height="20" Checked="CheckBox_Checked_2"/>
+
+                    <CheckBox Content="Override" HorizontalAlignment="Left" VerticalAlignment="Top" IsChecked="{Binding Override}" RenderTransformOrigin="-1.5,0.733" Height="20" Width="120" Checked="CheckBox_Checked_3" Margin="125,105,0,0"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="251,105,0,0" VerticalAlignment="Top" Height="44" Width="476"><Run Text="Overrides conflicting plugin commands with this plugin. If disabled, use the default prefix"/><LineBreak/><Run Text="!ab &lt;command&gt;. Enable if using Essentials plugin, disable if not. "/></TextBlock>
+
+
+                    <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontFamily="Gadugi" FontSize="24" Height="32" Width="267"><Run FontWeight="Bold" Text="Actions / Experimental"/></TextBlock>
+                    <!--<TextBox HorizontalAlignment="Left" Height="23" Margin="125,228,0,0" TextWrapping="Wrap" Text="{Binding BanDelay}" VerticalAlignment="Top" Width="280"/>
+                    <TextBlock Text="Sample text" HorizontalAlignment="Left" Margin="17,229,0,0" VerticalAlignment="Top" Height="18"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="450,53,0,0" VerticalAlignment="Top" Height="140" Width="231"><Run FontWeight="Bold" Text="Tip:"/><LineBreak/><Run Text="Any text with {{variable}} is a variable, "/><LineBreak/><Run Text="and will be replaced."/><LineBreak/><Run/><LineBreak/><Run Text="This part is not done yet, and will be "/><LineBreak/><Run Text="finished in a future version"/></TextBlock>-->
+                    <TextBlock HorizontalAlignment="Center" Margin="257,58,10,0" VerticalAlignment="Top" Height="42" Width="727"><Run Text="Makes the ban button another form of kicking the player. "/><LineBreak/><Run Text="Does not actually ban the player, and forces admin to use plugin commands."/></TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Margin="282,10,10,0" VerticalAlignment="Top" Height="32" Width="702" Foreground="Red"><Run FontWeight="Bold" Text="Collection of experimental / unstable configs. Use with caution, some may not work or "/><LineBreak/><Run FontWeight="Bold" Text="have bugs. You have been warned!"/></TextBlock>
+                    <TextBlock HorizontalAlignment="Center" Margin="18,104,877,0" VerticalAlignment="Top" Height="33" Width="99"><Run Text="Override "/><LineBreak/><Run Text="conflicing"/></TextBlock>
+
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <Button
+            Content="Save Config"
+            HorizontalAlignment="Left"
+            Margin="935,47,-10,0"
+            VerticalAlignment="Top"
+            Width="75"
+            Click="SaveButton_OnClick" />
+
+        <!--<TextBox Name="IntProperty" Grid.Column="1" Grid.Row ="2" Grid.ColumnSpan="1" Margin="5,7,5,2" Text="{Binding Port}"/>
         <TextBox Name="StringProperty2" Grid.Column="1" Grid.Row ="3" Grid.ColumnSpan="1" Margin="5,8,5,1" Text="{Binding Username}"/>
-
-        <TextBlock Grid.Column="0" Grid.Row ="4" VerticalAlignment="Center" Text="Database Name" Margin="5,13,5,3"/>
         <TextBox Name="StringProperty3" Grid.Column="1" Grid.Row ="4" Grid.ColumnSpan="1" Margin="5,9,5,0" Text="{Binding DatabaseName}"/>
-
-        <TextBlock Grid.Column="0" Grid.Row ="5" VerticalAlignment="Center" Text="Scanning Interval" Margin="5,16,5,5"/>
         <TextBox Name="StringProperty4" Grid.Column="1" Grid.Row ="5" Grid.ColumnSpan="1" Margin="5,10,5,5" Text="{Binding ScanningInt}"/>
-
-        <TextBlock Grid.Column="0" Grid.Row ="6" VerticalAlignment="Center" Text="Enabled" Margin="5,16,5,5"/>
         <CheckBox Name="Enabled" Grid.Column="1" Grid.Row ="6" Grid.ColumnSpan="1" Margin="5,10,5,5" IsChecked="{Binding Enabled}" Grid.RowSpan="1"/>
 
-        <Button Content="Save Config" Click="SaveButton_OnClick" Margin="5,10,5,5" Grid.Column="2" Grid.Row="6"/>
-
-        <TextBlock Grid.Column="1" Grid.Row ="7" VerticalAlignment="Center" Margin="5,10,5,15" Height="200" Grid.ColumnSpan="3"><Run Foreground="Red" FontWeight="Bold" FontSize="14" Text="The ban hammer is in your hands. "/><LineBreak/><Run Text="Take control of your bans. Temp ban users, ban users with a reason, and more!"/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="In-Game Commands"/><LineBreak/><Run Text="!ab ban &lt;user&gt; &lt;reason&gt; - Permanently bans a user."/><LineBreak/><Run Text="!ab tempban &lt;user/ingame-name&gt; &lt;duration in days&gt; &lt;reason&gt; - Temp-ban a user "/><LineBreak/><Run Text="!ab unban &lt;user&gt; - Unban a user."/><LineBreak/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="Important Database Info"/><LineBreak/><Run Text="Requires a MySQL Database to function."/><LineBreak/><Run FontWeight="Bold" Text="Do not forward the MySQL port! Doing so will open vulnerabilities for hackers!"/><LineBreak/><Run FontWeight="Bold"/><LineBreak/><Run FontWeight="Bold" Text="Highly recommended to look at the Wiki on Github: "/><Run Foreground="Blue" Text="https://github.com/sam4413/AdvancedBans "/></TextBlock>
+        <Button Content="Save Config" Click="SaveButton_OnClick" Margin="5,10,5,5" Grid.Column="2" Grid.Row="6"/>-->
+        <!--<TextBlock Grid.Row ="1" VerticalAlignment="Center" Margin="197,18,-886,66" Height="200" Grid.Column="4" Grid.RowSpan="7"><Run Foreground="Red" FontWeight="Bold" FontSize="14" Text="The ban hammer is in your hands. "/><LineBreak/><Run Text="Take control of your bans. Temp ban users, ban users with a reason, and more!"/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="In-Game Commands"/><LineBreak/><Run Text="!ab ban &lt;user&gt; &lt;reason&gt; - Permanently bans a user."/><LineBreak/><Run Text="!ab tempban &lt;user/ingame-name&gt; &lt;duration in days&gt; &lt;reason&gt; - Temp-ban a user "/><LineBreak/><Run Text="!ab unban &lt;user&gt; - Unban a user."/><LineBreak/><LineBreak/><Run FontWeight="Bold" FontSize="14" Text="Important Database Info"/><LineBreak/><Run Text="Requires a MySQL Database to function."/><LineBreak/><Run FontWeight="Bold" Text="Do not forward the MySQL port! Doing so will open vulnerabilities for hackers!"/><LineBreak/><Run FontWeight="Bold"/><LineBreak/><Run FontWeight="Bold" Text="Wiki is on Github: "/><Run Foreground="Blue" Text="https://github.com/sam4413/AdvancedBans"/><InlineUIContainer></TextBlock>-->
     </Grid>
 </UserControl>

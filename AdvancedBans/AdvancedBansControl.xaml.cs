@@ -23,5 +23,35 @@ namespace AdvancedBans
         {
             Plugin.Save();
         }
+
+        private void TextBox_TextChanged()
+        {
+
+        }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+
+        }
+
+        private void CheckBox_Checked_1(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void CheckBox_Checked_2(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void CheckBox_Checked_3(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

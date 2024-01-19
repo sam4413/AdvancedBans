@@ -4,10 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 using Newtonsoft.Json;
 using NLog;
 using Sandbox.Engine.Multiplayer;
+using Sandbox.Game;
 using Torch;
 using Torch.API;
 using Torch.API.Managers;
@@ -18,10 +19,12 @@ using Torch.Managers;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
+using AdvancedBans.AdvancedBans;
+using Sandbox.Game.World;
 
 namespace AdvancedBans
 {
-    public class Database
+    class Database
     {
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
@@ -29,13 +32,23 @@ namespace AdvancedBans
         public static string DBUser;
         public static string DBAddress;
         public static int DBPort;
+        internal static string DBPassword;
 
-        public Database(string name, string address, int port, string username)
+        public static int LatestBanNumber;
+        public static string LatestBanReason;
+        public static long LatestBanSteamID;
+        public static DateTime LatestBanExpireDate;
+        public static byte LatestIsPermanentBan;
+        public static byte LatestIsExpired;
+
+        public static bool DebugMode;
+        public Database(string name, string address, int port, string username, string password)
         {
             DBName = name;
             DBAddress = address;
             DBPort = port;
             DBUser = username;
+            DBPassword = password;
         }
 
         /// <summary>
@@ -43,30 +56,21 @@ namespace AdvancedBans
         /// </summary>
         public void CreateDatabase()
         {
-            //Log.Error("Creating Database!");
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
 
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};";
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};" + passwordSegment;
+
             MySqlConnection connection = new MySqlConnection(connectionString);
-            try
-            {
-                connection.Open();
-                //Log.Error("Connection to MySQL database opened successfully.");
+            connection.Open();
 
-                string createDatabaseQuery = $"CREATE DATABASE IF NOT EXISTS {DBName};";
-                MySqlCommand createDatabaseCommand = new MySqlCommand(createDatabaseQuery, connection);
-                createDatabaseCommand.ExecuteNonQuery();
-                Log.Info("Database initialized.");
+            string createDatabaseQuery = $"CREATE DATABASE IF NOT EXISTS {DBName};";
+            MySqlCommand createDatabaseCommand = new MySqlCommand(createDatabaseQuery, connection);
+            createDatabaseCommand.ExecuteNonQuery();
+            Log.Info("Database initialized.");
 
-                connection.Close();
-                return;
-                //Log.Warn("Connection to MySQL database closed.");
+            connection.Close();
+            return;
 
-            }
-            catch (MySqlException ex)
-            {
-                Log.Error("Error: " + ex.Message);
-                return;
-            }
         }
 
         /// <summary>
@@ -74,47 +78,33 @@ namespace AdvancedBans
         /// </summary>
         public void CreateDatabaseStructure()
         {
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
+
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};" + passwordSegment;
             MySqlConnection connection = new MySqlConnection(connectionString);
-            try
+            connection.Open();
+
+            string createStructure = @"SET SQL_MODE = ""NO_AUTO_VALUE_ON_ZERO"";
+            START TRANSACTION;
+            SET time_zone = ""+00:00"";
+
+            CREATE TABLE IF NOT EXISTS `bans` (
+            `BanNumber` int(255) NOT NULL AUTO_INCREMENT,
+            `SteamID` bigint(255) NOT NULL,
+            `ExpireDate` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+            `Reason` varchar(5000) NOT NULL,
+            `IsPermanent` tinyint(1) NOT NULL,
+            `IsExpired` tinyint(1) NOT NULL,
+            PRIMARY KEY(`BanNumber`)
+            ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+            COMMIT;";
+            using (MySqlCommand createBanNumberTableCommand = new MySqlCommand(createStructure, connection))
             {
-                connection.Open();
-                //Log.Error("Connection to MySQL database opened successfully.");
-
-                string createStructure = @"SET SQL_MODE = ""NO_AUTO_VALUE_ON_ZERO"";
-START TRANSACTION;
-SET time_zone = ""+00:00"";
-
-CREATE TABLE IF NOT EXISTS `bans` (
-    `BanNumber` int(255) NOT NULL,
-    `SteamID` bigint(255) NOT NULL,
-    `ExpireDate` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    `Reason` varchar(5000) NOT NULL,
-    `IsPermanent` tinyint(1) NOT NULL,
-    `IsExpired` tinyint(1) NOT NULL
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
-
-
-ALTER TABLE `bans`
-    ADD PRIMARY KEY(`BanNumber`);
-
-ALTER TABLE `bans`
-    MODIFY `BanNumber` int(255) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT = 1;
-COMMIT;";
-                using (MySqlCommand createBanNumberTableCommand = new MySqlCommand(createStructure, connection))
-                {
-                    createBanNumberTableCommand.ExecuteNonQuery();
-                }
-                Log.Info("Database structure initialized.");
-                connection.Close();
-                return;
-                //Log.Warn("Connection to MySQL database closed.");
+                createBanNumberTableCommand.ExecuteNonQuery();
             }
-            catch (MySqlException ex)
-            {
-                Log.Error("Error: " + ex.Message);
-                return;
-            }
+            Log.Info("Database structure initialized.");
+            connection.Close();
+            return;
         }
 
         /// <summary>
@@ -122,7 +112,10 @@ COMMIT;";
         /// </summary>
         public void CheckAndUnbanExpiredBans()
         {
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};convert zero datetime=True;";
+
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
+
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};convert zero datetime=True;" + passwordSegment;
 
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
@@ -140,16 +133,13 @@ COMMIT;";
                         int isPermanent = Convert.ToInt32(reader["IsPermanent"]);
                         int isExpired = Convert.ToInt32(reader["IsExpired"]);
 
-
                         if (DateTime.TryParse(expireDateString, out DateTime expireDate))
                         {
-                            // Compare the current date with the ExpireDate.
-                            if (DateTime.Now > expireDate && isPermanent == 0 && isExpired == 0)
+                            if (DateTime.Now > expireDate && isPermanent != 1 && isExpired != 1)
                             {
                                 ulong steamID = ulong.Parse(TempSteamID);
                                 Log.Info($"User {steamID} with Ban Number {banNumber} ban has expired.");
                                 SetExpired(banNumber);
-                                MyMultiplayerBase.BanUser(steamID, false);
                             }
                         }
                     }
@@ -158,71 +148,110 @@ COMMIT;";
                 connection.Close();
             }
         }
-        private static void SetExpired(int banNumber)
+        public static void SetExpired(int banNumber)
         {
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};" + passwordSegment;
+            ulong steamID = 0;
+            bool debug = AdvancedBansPatches.Debug;
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
-                // Update the IsExpired value to 1.
-                string updateQuery = "UPDATE bans SET IsExpired = 1 WHERE BanNumber = @BanNumber;";
-                MySqlCommand updateCommand = new MySqlCommand(updateQuery, connection);
-                updateCommand.Parameters.AddWithValue("@BanNumber", banNumber);
-                updateCommand.ExecuteNonQuery();
+
+                string selectQuery = "SELECT SteamID FROM bans WHERE BanNumber = @BanNumber;";
+                MySqlCommand selectCommand = new MySqlCommand(selectQuery, connection);
+                selectCommand.Parameters.AddWithValue("@BanNumber", banNumber);
+
+                using (MySqlDataReader reader = selectCommand.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        steamID = reader.GetUInt64("SteamID");
+                    }
+                }
+
+                if (steamID != 0)
+                {
+                    Log.Info($"Setting ban {banNumber} ({steamID}) to expired.");
+
+                    string updateQuery = "UPDATE bans SET IsExpired = 1 WHERE BanNumber = @BanNumber;";
+                    MySqlCommand updateCommand = new MySqlCommand(updateQuery, connection);
+                    updateCommand.Parameters.AddWithValue("@BanNumber", banNumber);
+                    updateCommand.ExecuteNonQuery();
+
+                    MyMultiplayerBase.BanUser(steamID, false);
+                }
+                else
+                {
+                    if (debug == true) Log.Error("No SteamID found for ban " + banNumber);
+                }
                 connection.Close();
             }
-            
         }
 
+
         /// <summary>
-        /// Check if the user exists in the database. If so, it returns a JSON string.
+        /// Check if the user exists in the database, and if isExpired is 1. If they are still banned, it will return true. Else, it will return false.
         /// </summary>
         /// <param name="steamid"></param>
         /// <returns></returns>
-        public string IsBanned(ulong steamid)
+        public bool IsBanned(ulong steamid)
         {
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
 
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
-            Dictionary<string, object> banInfo = new Dictionary<string, object>();
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};Convert Zero Datetime=True;" + passwordSegment;
+
             MySqlConnection connection = new MySqlConnection(connectionString);
             try
             {
                 connection.Open();
 
-                string insertQuery = $"SELECT BanNumber, SteamID, Reason, ExpireDate, IsPermanent, IsExpired FROM bans WHERE SteamID = @steamid;";
+
+                string insertQuery = "SELECT BanNumber, SteamID, Reason, ExpireDate, IsPermanent, IsExpired " +
+                             "FROM bans WHERE SteamID = @steamid " +
+                             "ORDER BY BanNumber DESC LIMIT 1;";
 
                 MySqlCommand insertCommand = new MySqlCommand(insertQuery, connection);
                 insertCommand.Parameters.AddWithValue("@steamid", steamid);
 
+                var MyResult = false;
                 using (MySqlDataReader reader = insertCommand.ExecuteReader())
                 {
                     if (reader.Read())
                     {
-                        banInfo["success"] = true;
-                        banInfo["BanNumber"] = reader["BanNumber"];
-                        banInfo["SteamID"] = reader["SteamID"];
-                        banInfo["Reason"] = reader["Reason"];
-                        banInfo["ExpireDate"] = reader["ExpireDate"];
-                        banInfo["IsPermanent"] = reader["IsPermanent"];
-                        banInfo["IsExpired"] = reader["IsExpired"];
-                    } else {
-                        banInfo["success"] = false;
+                        LatestBanNumber = reader.GetInt32("BanNumber");
+                        LatestBanSteamID = reader.GetInt64("SteamID");
+                        LatestBanReason = reader.GetString("Reason");
+                        LatestBanExpireDate = reader.GetDateTime("ExpireDate");
+                        LatestIsPermanentBan = reader.GetByte("IsPermanent");
+                        LatestIsExpired = reader.GetByte("IsExpired");
+
+                        if (LatestIsExpired == 1)
+                        {
+                            MyResult = false;
+                        }
+                        else if (LatestIsExpired == 0)
+                        {
+                            MyResult = true;
+                        }
+                        else
+                        {
+                            MyResult = true;
+                        }
                     }
                 }
 
                 connection.Close();
-                return banInfo.Count > 0 ? JsonConvert.SerializeObject(banInfo, Formatting.Indented) : "{}";
+                return MyResult;
             }
             catch (MySqlException ex)
             {
                 Log.Error("Error: " + ex.Message);
-                return "{}";
+                return false;
             }
-
-            //Log.Warn("Connection to MySQL database closed.");
         }
 
-    
+
         /// <summary>
         /// Add a user to the database.
         /// </summary>
@@ -230,20 +259,24 @@ COMMIT;";
         /// <param name="expireDate"></param>
         /// <param name="reason"></param>
         /// <param name="isPermanent"></param>
-        public async void AddUser(ulong steamid, string expireDate, string reason, bool isPermanent)
+        public int AddUser(ulong steamid, string expireDate, string reason, bool isPermanent)
         {
+            string WMPublicAddress = AdvancedBansPatches.WMPublicAddress;
 
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
+
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};" + passwordSegment;
+
             MySqlConnection connection = new MySqlConnection(connectionString);
+            bool debug = AdvancedBansPatches.Debug;
             try
             {
                 connection.Open();
-                //Log.Error("Connection to MySQL database opened successfully.");
                 int permanentVal;
                 if (isPermanent == true)
                 {
                     permanentVal = 1;
-                    expireDate = ""; //Null expire date
+                    expireDate = "";
                 }
                 else
                 {
@@ -268,38 +301,74 @@ COMMIT;";
                         expireDate = expirationTime.ToString("yyyy-MM-dd HH:mm:ss");
                     }
                 }
+
                 string insertQuery = $"INSERT INTO `bans` (`SteamID`, `ExpireDate`, `Reason`, `IsPermanent`, `IsExpired`) VALUES ('{steamid}', '{expireDate}', '{reason}', '{permanentVal}', '0');";
 
                 MySqlCommand insertCommand = new MySqlCommand(insertQuery, connection);
 
                 int rowsAffected = insertCommand.ExecuteNonQuery();
 
-                MyMultiplayerBase.BanUser(steamid, true); //Ban the user
+                long MyBanNumber = insertCommand.LastInsertedId;
 
-                Log.Info($"User with SteamID {steamid} banned.\nReason: {reason}.\nExpires: {expireDate}\nIs Permanent: {isPermanent}");
+                long playerId = MySession.Static.Players.TryGetIdentityId(steamid);
+                if (debug == true)
+                {
+                    Log.Error(playerId);
+                    Log.Error("Displaying message");
+                }
+
+                IsBanned(steamid);
+
+                string MyUrl = $"http://{WMPublicAddress}:{WebServer.WMPort}/?BanNumber={LatestBanNumber}&SteamID={LatestBanSteamID}&ExpireDate={LatestBanExpireDate.ToString("g")}&IsPermanent={LatestIsPermanentBan}&Reason={LatestBanReason}";
+                Log.Error(MyUrl);
+                MyVisualScriptLogicProvider.OpenSteamOverlay($"https://steamcommunity.com/linkfilter/?url={MyUrl}", playerId);
+
+                MyMultiplayerBase.BanUser(steamid, true);
+                if (debug == true)
+                {
+                    Log.Error($@"
+    ===Ban Info===
+    Ban Number: {LatestBanNumber}
+    SteamId: {LatestBanSteamID}
+    Expire Date: {LatestBanExpireDate.ToString("g")}
+    Is Permanent: {LatestIsPermanentBan}
+    Is Expired: {LatestIsExpired}
+    ");
+                }
+
+                Log.Info($"User {steamid} was banned with Ban Number {LatestBanNumber}");
+                if (AdvancedBansPlugin.Instance.Config.AM_BanButton == false)
+                {
+                    MyMultiplayerBase.BanUser(steamid, false);
+                }
+
+                if (debug == true) Log.Info("Database structure initialized.");
+
                 connection.Close();
-                return;
+                return (int)MyBanNumber;
             }
             catch (MySqlException ex)
             {
                 Log.Error("Error: " + ex.Message);
-                return;
+                return -1;
             }
         }
 
         /// <summary>
-        /// Removes a user from the Database. This is not recommended as it will remove all logs of the ban. To preserve the ban, use Unban(banNumber);
+        /// Removes a user from the Database. This is not recommended as it will remove all logs of the ban. To preserve the ban, use SetExpired(banNumber);
         /// </summary>
         /// <param name="banNumber"></param>
         public void RemoveUser(int banNumber)
         {
 
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
+
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};" + passwordSegment;
+
             MySqlConnection connection = new MySqlConnection(connectionString);
             try
             {
                 connection.Open();
-                //Log.Error("Connection to MySQL database opened successfully.");
 
                 string insertQuery = $"DELETE FROM `bans` WHERE `bans`.`BanNumber` = {banNumber}";
 
@@ -319,44 +388,22 @@ COMMIT;";
         }
 
         /// <summary>
-        /// Unbans the user from the server. Retains log of the user being banned.
-        /// </summary>
-        /// <param name="banNumber"></param>
-        public void Unban(int banNumber)
-        {
-            try
-            {
-                //Log.Error("Connection to MySQL database opened successfully.");
-
-                SetExpired(banNumber);
-                //MyMultiplayerBase.BanUser();
-                Log.Info($"Unbanned Ban Number: {banNumber}.");
-                return;
-            }
-            catch (MySqlException ex)
-            {
-                Log.Error("Error: " + ex.Message);
-                return;
-            }
-        }
-
-        /// <summary>
         /// Gets the entire database table, and return it to a json string.
         /// </summary>
         /// <returns></returns>
-        public string AllListed()
+        public static string AllListed()
         {
 
-            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};";
+            string passwordSegment = DBPassword.Equals("null") ? "" : $"Password={DBPassword};";
+
+            string connectionString = $"Server={DBAddress};Port={DBPort};User ID={DBUser};Database={DBName};convert zero datetime=True;" + passwordSegment;
 
             List<Dictionary<string, object>> bansData = new List<Dictionary<string, object>>();
 
             MySqlConnection connection = new MySqlConnection(connectionString);
 
             connection.Open();
-            //Log.Error("Connection to MySQL database opened successfully.");
 
-            // Your query to insert a new record into the "bans" table.
             string selectQuery = "SELECT * FROM bans;";
             MySqlCommand selectCommand = new MySqlCommand(selectQuery, connection);
 
@@ -376,7 +423,6 @@ COMMIT;";
             string json = JsonConvert.SerializeObject(bansData, Formatting.Indented);
             connection.Close();
             return json;
-            //Log.Warn("Connection to MySQL database closed.");
         }
     }
 }
