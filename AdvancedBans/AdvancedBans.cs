@@ -9,19 +9,20 @@ using Torch.API.Managers;
 using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
-using MySqlConnector;
-using Sandbox.Game.Entities.Blocks;
-using Sandbox.Game.World;
-using Sandbox.ModAPI.Ingame;
+using Npgsql;
 using AdvancedBans.AdvancedBans;
-using Sandbox.Game.Multiplayer;
-using Newtonsoft.Json;
-using Sandbox.Game;
-using Sandbox.Game.Entities;
 using HarmonyLib;
 using System.Collections.Generic;
 using Torch.Commands;
 using System.Threading.Tasks;
+using static Sandbox.ModAPI.MyModAPIHelper;
+using VRage.GameServices;
+using Sandbox.Game.World;
+using VRage.Game.VisualScripting;
+using System.Text.Json;
+using System.Linq;
+using Sandbox.Game.Entities;
+using Sandbox.Game.Multiplayer;
 
 namespace AdvancedBans
 {
@@ -80,13 +81,13 @@ namespace AdvancedBans
                 MyDatabase.CreateDatabase();
                 MyDatabase.CreateDatabaseStructure();
             }
-            catch (MySqlException ex)
+            catch (NpgsqlException ex)
             {
                 if (ex.Message == "Multiple primary key defined")
                 { } 
                 else
                 {
-                    Log.Fatal($"MySQL Error: {ex.Message} Ensure the MySQL Server is running and try again!");
+                    Log.Fatal($"Npgsql Error: {ex.Message} Ensure the Postgresql Server is running and try again!\nStackTrace:\n{ex.StackTrace}");
                     Torch.Destroy();
                 }
                 
@@ -103,14 +104,15 @@ namespace AdvancedBans
             } catch (Exception e)
             {
                 Log.Fatal("Error during patch: " + e.Message,e.StackTrace);
-            }
+				Torch.Destroy();
+			}
         }
 
         private void SessionChanged(ITorchSession session, TorchSessionState state)
         {
             var mpMan = Torch.CurrentSession.Managers.GetManager<IMultiplayerManagerServer>();
 
-            switch (state)
+			switch (state)
             {
 
                 case TorchSessionState.Loaded:
@@ -193,42 +195,110 @@ namespace AdvancedBans
                 Log.Warn(e, "Configuration failed to save");
             }
         }
-        public override void Update()
-        {
-            base.Update();
-            if (Config.Enabled)
-            {
-                if (TickCount >= Config.ScanningInt)
-                {
+		public override async void Update()
+		{
+			base.Update();
+			if (Config.Enabled)
+			{
+				if (TickCount >= Config.ScanningInt)
+				{
+					TickCount = 0;
+					string DBUser = Config.Username;
+					string DBPassword = Config.Password;
+					string DBAddress = Config.LocalAddress;
+					string DBName = Config.DatabaseName;
+					int DBPort = Config.Port;
 
-                    TickCount = 0;
-                    string DBUser = Config.Username;
-                    string DBPassword = Config.Password;
-                    string DBAddress = Config.LocalAddress;
-                    string DBName = Config.DatabaseName;
-                    int DBPort = Config.Port;
+					Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser, DBPassword);
+					if (Config.Debug)
+					{
+						Log.Warn("Checking expired bans...");
+					}
+					try
+					{
+						MyDatabase.CheckAndUnbanExpiredBans();
+					}
+					catch (NpgsqlException ex)
+					{
+						if (ex.Message == "Multiple primary key defined")
+						{ }
+					}
+					catch (Exception e)
+					{
+						Log.Error(e.Message);
+						Log.Error(e.StackTrace);
+					}
 
-                    Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser, DBPassword);
-                    Log.Warn("Checking expired bans...");
-                    try
-                    {
-                        MyDatabase.CheckAndUnbanExpiredBans();
-                    }
-                    catch (MySqlException ex)
-                    {
-                        if (ex.Message == "Multiple primary key defined")
-                        { }
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Error(e.Message);
-                    }
+					if (Config.Debug)
+					{
+						Log.Warn("Checking if banned player is online...");
+					}
+					try
+					{
+						foreach (MyPlayer.PlayerId player in MySession.Static.Players.GetAllPlayers())
+						{
+							MyPlayerCollection mpc = new MyPlayerCollection();
+							if (mpc.IsPlayerOnline(MySession.Static.Players.TryGetIdentityId(player.SteamId))) {
 
-                } else {
-                    TickCount++;
-                }
-            }
-        }
-    }
+                            
+							    var json = Database.GetBannedBySteamID(player.SteamId);
+							    if (MyDatabase.IsBanned(json))
+							    {
+								    Log.Info($"Banned player ({player.SteamId}) detected. Showing message.");
+
+								    // Define the anonymous type structure
+								    var options = new JsonSerializerOptions
+								    {
+									    PropertyNameCaseInsensitive = true
+								    };
+
+								    // Parse the JSON data into a list of anonymous objects
+								    var banInfoList = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(json, options);
+
+								    // Access the first entry in the list
+								    if (banInfoList != null && banInfoList.Count > 0)
+								    {
+									    var firstBanInfo = banInfoList[0];
+
+									    if (firstBanInfo.TryGetValue("CaseID", out JsonElement caseIdElement))
+									    {
+										    string caseId = caseIdElement.GetString();
+										    WebServer.ShowBanMessage($"/{caseId}", MySession.Static.Players.TryGetIdentityId(player.SteamId));
+                                            MyMultiplayerBase.BanUser(player.SteamId, true);
+
+                                            await Task.Delay(10000);
+
+                                            MyMultiplayerBase.BanUser(player.SteamId, false);
+									    }
+								    }
+							    }
+							}
+							else
+							{
+								if (Config.Debug)
+								{
+									Log.Info($"Player {player.SteamId} not banned.");
+								}
+							}
+						}
+					}
+					catch (NpgsqlException ex)
+					{
+						if (ex.Message == "Multiple primary key defined")
+						{ }
+					}
+					catch (Exception e)
+					{
+						Log.Error(e.Message);
+						Log.Error(e.StackTrace);
+					}
+				}
+				else
+				{
+					TickCount++;
+				}
+			}
+		}
+	}
 }
 

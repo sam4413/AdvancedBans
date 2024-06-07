@@ -1,16 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using HarmonyLib;
 using Sandbox.Engine.Multiplayer;
 using VRage.Network;
 using NLog;
 using Sandbox.Game;
-using Torch.API;
 using Sandbox.Game.World;
-using System.Net.Http;
+using System.Collections.Generic;
+using System.Text.Json;
+using Sandbox.Game.SessionComponents;
+using Sandbox.Game.Multiplayer;
+using VRage.ObjectBuilders;
+using VRageMath;
+using VRage.GameServices;
 
 namespace AdvancedBans.AdvancedBans
 {
@@ -39,76 +41,158 @@ namespace AdvancedBans.AdvancedBans
             Debug = isDebug;
         }
 
-        public async static void CheckIfBannedUser(ulong obj)
-        {
-            try
-            {
-                if (Debug == true)
-                    Log.Error(obj);
-                Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser, DBPassword);
-                Log.Error(MyDatabase.IsBanned(obj));
-                if (MyDatabase.IsBanned(obj) == true)
-                {
-                    Log.Info($"User {obj} is banned.");
-                    if (Debug == true)
-                    {
-                        Log.Error($"Banned player {obj} detected. Showing message");
-                        Log.Error($@"
-    ===Ban Info===
-    Ban Number: {Database.LatestBanNumber}
-    SteamId: {Database.LatestBanSteamID}
-    Expire Date: {Database.LatestBanExpireDate.ToString("g")}
-    Is Permanent: {Database.LatestIsPermanentBan}
-    Is Expired: {Database.LatestIsExpired}
-    ");
-                    }  
-                    string MyUrl = $"http://{WMPublicAddress}:{WebServer.WMPort}/?BanNumber={Database.LatestBanNumber}&SteamID={Database.LatestBanSteamID}&ExpireDate={Database.LatestBanExpireDate.ToString("g")}&IsPermanent={Database.LatestIsPermanentBan}&Reason={Database.LatestBanReason}";
+		public static AdvancedBansConfig Config = new AdvancedBansConfig();
 
-                    var MyPlayerId = MySession.Static.Players.TryGetIdentityId((ulong)Database.LatestBanSteamID);
-                    await Task.Delay(BanDelay);
-                    MyVisualScriptLogicProvider.OpenSteamOverlay($"https://steamcommunity.com/linkfilter/?url={MyUrl}", MyPlayerId);
+		public async static void CheckIfBannedUser(ulong obj)
+		{
+			try
+			{
+				if (Debug)
+					Log.Error(obj);
 
-                    MyMultiplayerBase.BanUser(obj, true);
-                    if (AdvancedBansPlugin.Instance.Config.AM_BanButton == false)
-                    {
-                        await Task.Delay(1000);
-                        MyMultiplayerBase.BanUser(obj, false);
-                    }
-                    Log.Info("User removed.");
-                }
-                else
-                {
-                    if (Debug == true)
-                    {
-                        Log.Error($@"
-    ===Ban Info===
-    Ban Number: {Database.LatestBanNumber}
-    SteamId: {Database.LatestBanSteamID}
-    Expire Date: {Database.LatestBanExpireDate.ToString("g")}
-    Is Permanent: {Database.LatestIsPermanentBan}
-    Is Expired: {Database.LatestIsExpired}
-    ");
-                        Log.Error("Player is not banned!");
-                    } 
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e);
-            }
-        }
-        [HarmonyPatch(typeof(MyMultiplayerServerBase))]
-        [HarmonyPatch("OnWorldRequest")]
-        class Patch
-        {
-            protected static bool Prefix(ref EndpointId sender)
-            {
-                var MyPatchData = sender.Value;
-                Log.Error(MyPatchData);
-                CheckIfBannedUser(MyPatchData);
+				AdvancedBansConfig Config = new AdvancedBansConfig();
+				Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser, DBPassword);
 
-                return true;
-            }
-        }
-    }
+				string banInfo = Database.GetBannedBySteamID(obj);
+				if (string.IsNullOrEmpty(banInfo))
+				{
+					Log.Info($"User {obj} has no ban records.");
+					return;
+				}
+
+				var banInfoList = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(banInfo);
+
+				string caseId = "";
+				bool isBanned = false;
+
+				foreach (var info in banInfoList)
+				{
+					if (info.ContainsKey("CaseID") && info.ContainsKey("IsExpired") && info["IsExpired"].GetByte() == 0)
+					{
+						caseId = info["CaseID"].GetString();
+						isBanned = true;
+						break;
+					}
+				}
+
+				if (isBanned)
+				{
+					Log.Info($"User {obj} is banned.");
+					if (Debug)
+					{
+						Log.Error($"Banned player {obj} detected. Showing message");
+					}
+
+					var MyPlayerId = MySession.Static.Players.TryGetIdentityId(obj);
+					WebServer.ShowBanMessage(Config.WebPublicAddress + $"/{caseId}", MyPlayerId);
+
+					await Task.Delay(BanDelay);
+					MyVisualScriptLogicProvider.RemoveEntity(MyPlayerId);
+					MyMultiplayerBase.BanUser(obj, true);
+					await Task.Delay(10000);
+					MyMultiplayerBase.BanUser(obj, false);
+
+					Log.Info("User removed.");
+				}
+				else
+				{
+					Log.Info($"User {obj} is NOT banned.");
+					if (Debug)
+					{
+						Log.Error("Player is not banned!");
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Log.Error(e);
+			}
+		}
+
+		[HarmonyPatch(typeof(MyMultiplayerServerBase))]
+		[HarmonyPatch("OnWorldRequest")]
+		class Patch
+		{
+			protected static bool Prefix(ref EndpointId sender)
+			{
+				var MyPatchData = sender.Value;
+				CheckIfBannedUser(MyPatchData);
+
+				return true;
+			}
+		}
+
+		[HarmonyPatch(typeof(MySessionComponentMatch))]
+		[HarmonyPatch("OnPlayerSpawned")]
+		class Patch2
+		{
+			private static bool Prefix(ref long playerId)
+			{
+				if (Config.ExperimentalPatches)
+				{
+					Log.Error("Player spawned: " + playerId);
+					Log.Error(MyVisualScriptLogicProvider.GetSteamId(playerId));
+					return true;
+				}
+				return true;
+			}
+		}
+
+		[HarmonyPatch(typeof(MyPlayerCollection))]
+		[HarmonyPatch(nameof(MyPlayerCollection.OnRespawnRequest),
+			new Type[] {
+			typeof(bool), typeof(bool), typeof(long), typeof(string), typeof(Vector3D?),
+			typeof(Vector3?), typeof(Vector3?), typeof(SerializableDefinitionId?),
+			typeof(bool), typeof(int), typeof(string), typeof(Color)
+			}
+		)]
+		class Patch3
+		{
+			private static bool Prefix(
+				ref bool joinGame,
+				bool newIdentity,
+				long respawnEntityId,
+				string respawnShipId,
+				Vector3D? spawnPosition,
+				Vector3? direction,
+				Vector3? up,
+				SerializableDefinitionId? botDefinitionId,
+				bool realPlayer,
+				int playerSerialId,
+				string modelName,
+				Color color)
+			{
+				if (Config.ExperimentalPatches)
+				{
+					Log.Error("Respawn Request: " + respawnEntityId);
+					Log.Error(MyVisualScriptLogicProvider.GetSteamId(playerSerialId));
+
+					Log.Error("---");
+					Log.Error("Joining game?: " + joinGame);
+					Log.Error("Real Player?: " + realPlayer);
+					return true;
+				}
+				return true;
+			}
+		}
+		[HarmonyPatch(typeof(MyMultiplayerJoinResult))]
+		[HarmonyPatch("RaiseJoined")]
+		class Patch4
+		{
+			private static bool Prefix(ref 
+				bool success,
+				IMyLobby lobby,
+				MyLobbyStatusCode response,
+				MyMultiplayerBase multiplayer
+			)
+			{
+				if (Config.ExperimentalPatches)
+				{
+					Log.Error(response);
+					return true;
+				}
+				return true;
+			}
+		}
+	}
 }

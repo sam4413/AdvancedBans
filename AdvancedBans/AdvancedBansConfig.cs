@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Torch;
+﻿using Torch;
 
 namespace AdvancedBans
 {
@@ -12,11 +10,11 @@ namespace AdvancedBans
 
         private string _DatabaseName = "AdvancedBans";
         private string _LocalAddress = "localhost";
-        private int _Port = 3306;
-        private string _Username = "root";
+        private int _Port = 5432;
+        private string _Username = "postgres";
         private string _Password = "null";
         private int _ScanningInt = 216000; //1 hour
-        private int _BanDelay = 15000; //In milliseconds. 15 seconds, this value depends on how much mods you have. If it is a Lobby server, or a lightly modded server, keep it low.
+        private int _BanDelay = 10000; //In milliseconds. 15 seconds, this value depends on how much mods you have. If it is a Lobby server, or a lightly modded server, keep it low.
         //Webserver
         private bool _WebEnabled = true;
         private string _WebAddress = "localhost";
@@ -39,10 +37,18 @@ namespace AdvancedBans
 </head>
 <body>
     <h1>You have been banned!</h1>
-    <p><strong>Ban Number:</strong> {{BanNumber}}</p>
-    <p><strong>SteamID:</strong> {{SteamID}}</p>
-    <p><strong>ExpireDate:</strong> {{ExpireDate}}</p>
+    <p><strong>Steam ID:</strong> {{SteamID}}</p>
+    <p><strong>Banned Date:</strong> {{BannedDate}}</p>
+    <p><strong>Expire Date:</strong> {{ExpireDate}}</p>
+    <p><strong>IsPermanent:</strong> {{IsPermanent}}</p>
+    <p><strong>IsExpired:</strong> {{IsExpired}}</p>
     <p><strong>Reason:</strong> {{Reason}}</p>
+    <p><strong>Remaining time:</strong> {{RemainingTime}}</p>
+
+    
+    <br><p style=""color:red;"" ><strong>Case ID:</strong> {{CaseID}}
+    <br>This is your unique Case ID for your ban.
+    <br>Sharing your Case ID may affect the processing of your appeal!</p>
     <br><p>Powered by AdvancedBans</p>
 </body>
 </html>";
@@ -63,6 +69,8 @@ namespace AdvancedBans
     <h1>No ban details provided or ban is invalid.</h1>
 </body>
 </html>";
+        private bool _WebEnforceRateLimits = false;
+
         //Actions
         private bool _AM_BanButton = false;
         private string _CM_BanPlayer = "Player {{user}} ({{userId}}) banned. Ban number: {{banNumber}}";
@@ -70,6 +78,8 @@ namespace AdvancedBans
         private string _CM_UnbanPlayer = "Player {{user}} ({{userId}}) with ban number {{banNumber}} unbanned.";
         private string _CM_HelpMenu = @"AdvancedBans - v.1.0
 Help coming soon.";
+
+        private bool _ExperimentalPatches = false;
 
         //General
         public bool Enabled { get => _Enabled; set => SetValue(ref _Enabled, value); }
@@ -82,16 +92,18 @@ Help coming soon.";
         public int ScanningInt { get => _ScanningInt; set => SetValue(ref _ScanningInt, value); }
         public int Port { get => _Port; set => SetValue(ref _Port, value); }
         public int BanDelay { get => _BanDelay; set => SetValue(ref _BanDelay, value); }
-        //WebServer
-        public bool WebEnabled { get => _WebEnabled; set => SetValue(ref _WebEnabled, value); }
+		public bool ExperimentalPatches { get => _ExperimentalPatches; set => SetValue(ref _ExperimentalPatches, value); }
+		//WebServer
+		public bool WebEnabled { get => _WebEnabled; set => SetValue(ref _WebEnabled, value); }
         public string WebAddress { get => _WebAddress; set => SetValue(ref _WebAddress, value); }
         public string WebPort { get => _WebPort; set => SetValue(ref _WebPort, value); }
         public string WebPublicAddress { get => _WebPublicAddress; set => SetValue(ref _WebPublicAddress, value); }
         public string WebBanPage { get => _WebBanPage; set => SetValue(ref _WebBanPage, value); }
         public string WebErrorPage { get => _WebErrorPage; set => SetValue(ref _WebErrorPage, value); }
+		public bool WebEnforceRateLimits { get => _WebEnforceRateLimits; set => SetValue(ref _WebEnforceRateLimits, value); }
 
-        //Actions
-        public bool AM_BanButton { get => _AM_BanButton; set => SetValue(ref _AM_BanButton, value); }
+		//Actions
+		public bool AM_BanButton { get => _AM_BanButton; set => SetValue(ref _AM_BanButton, value); }
         public string CM_BanPlayer { get => _CM_BanPlayer; set => SetValue(ref _CM_BanPlayer, value); }
         public string CM_TempbanPlayer { get => _CM_TempbanPlayer; set => SetValue(ref _CM_TempbanPlayer, value); }
         public string CM_UnbanPlayer { get => _CM_UnbanPlayer; set => SetValue(ref _CM_UnbanPlayer, value); }
