@@ -10,7 +10,6 @@ using Torch.API.Plugins;
 using Torch.API.Session;
 using Torch.Session;
 using Npgsql;
-using AdvancedBans.AdvancedBans;
 using HarmonyLib;
 using System.Collections.Generic;
 using Torch.Commands;
@@ -26,38 +25,30 @@ using Sandbox.Game.Multiplayer;
 
 namespace AdvancedBans
 {
-    public class BanInfo
+    public class AdvancedBans : TorchPluginBase, IWpfPlugin
     {
-        public bool Success { get; set; }
-        public string BanNumber { get; set; }
-        public ulong SteamID { get; set; }
-        public string Reason { get; set; }
-        public DateTime ExpireDate { get; set; }
-        public bool IsPermanent { get; set; }
-        public bool IsExpired { get; set; }
-    }
-    public class AdvancedBansPlugin : TorchPluginBase, IWpfPlugin
-    {
-
         public static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
         private static readonly string CONFIG_FILE_NAME = "AdvancedBansConfig.cfg";
 
-        private readonly Harmony _harmony = new Harmony("AdvancedBans.AdvancedBansPlugin");
-
+        private readonly Harmony _harmony = new Harmony("AdvancedBans");
         private AdvancedBansControl _control;
         public UserControl GetControl() => _control ?? (_control = new AdvancedBansControl(this));
 
-        public static AdvancedBansPlugin Instance;
+        public static AdvancedBans Instance;
 
         private Persistent<AdvancedBansConfig> _config;
         public AdvancedBansConfig Config => _config?.Data;
         private int TickCount = 0;
+        public Database Database;
 
-        public override void Init(ITorchBase torch)
+        public BanRepository banRepo;
+        public IPRepository ipRepo;
+
+        public override async void Init(ITorchBase torch)
         {
             base.Init(torch);
-
+            
             SetupConfig();
 
             var sessionManager = Torch.Managers.GetManager<TorchSessionManager>();
@@ -67,19 +58,26 @@ namespace AdvancedBans
                 Log.Warn("No session manager loaded!");
 
             Save();
-            //WebManager
-            WebServer MyWebManager = new WebServer(Config.WebAddress, Config.WebPort, Config.WebBanPage, Config.WebErrorPage);
-            if (Config.WebEnabled)
-                WebServer.StartWebServer();
-                AdvancedBansPatches ConfigValues = new AdvancedBansPatches(Config.WebPublicAddress,Config.DatabaseName,Config.LocalAddress,Config.Port,Config.Username,Config.Password,Config.Debug);
-            
+
+            if (Config.ShutdownIfNotActive == false)
+            {
+                Log.Warn("ShutdownIfNotActive is set to false. This means banned players can join if the database cannot be reached. This setting should only be used for initial setup of AdvancedBans. Once set up, enable the setting and restart!");
+            }
+            Instance = this;
+
             try
             {
-                Database.DebugMode = Config.Debug;
-                AdvancedBansPatches.BanDelay = Config.BanDelay;
-                Database MyDatabase = new Database(Config.DatabaseName, Config.LocalAddress, Config.Port, Config.Username, Config.Password);
-                MyDatabase.CreateDatabase();
-                MyDatabase.CreateDatabaseStructure();
+                //Database
+                Log.Info("Initializing Database...");
+                Database = new Database();
+
+                BanRepository.DebugMode = Config.Debug;
+                BanRepository.DebugMode = Config.Debug;
+                IPRepository.DebugMode = Config.Debug;
+
+                // then construct them:
+                banRepo = new BanRepository(Database);
+                ipRepo = new IPRepository(Database);
             }
             catch (NpgsqlException ex)
             {
@@ -87,37 +85,86 @@ namespace AdvancedBans
                 { } 
                 else
                 {
-                    Log.Fatal($"Npgsql Error: {ex.Message} Ensure the Postgresql Server is running and try again!\nStackTrace:\n{ex.StackTrace}");
-                    Torch.Destroy();
+                    if (Config.ShutdownIfNotActive)
+                    {
+                        Log.Fatal($"Npgsql Error: {ex.Message} Ensure the Postgresql Server is running and try again!\nStackTrace:\n{ex.StackTrace}");
+                        ShutdownSafely();
+                        return;
+                    }
+                    Log.Error("WARNING! AdvancedBans could not connect to the database. This means banned players via AdvancedBans can join. Please ensure your database credentials are correct, and enable ShutdownIfNotActive!\n" + ex.Message + "\n" + ex.StackTrace);
                 }
                 
             }
             catch (Exception e)
             {
-                Log.Fatal($"Error: Cannot start up AdvancedBans. Is {Config.Port} taken?\n" + e);
-                Torch.Destroy();
+                if (Config.ShutdownIfNotActive)
+                {
+                    Log.Fatal($"Error: Cannot start up AdvancedBans. Check the database credentials. Is {Config.Port} taken?\n" + e);
+                    ShutdownSafely();
+                    return;
+                }
+                Log.Error("WARNING! AdvancedBans could not connect to the database. This means banned players via AdvancedBans can join. Please ensure your database credentials are correct, and enable ShutdownIfNotActive!\n" + e.Message + "\n" + e.StackTrace);
             }
-
             try
             {
                 _harmony.PatchAll();
+                Log.Info("Methods patched!");
+            }
+            catch (Exception e)
+            {
+                Log.Fatal("Error during patch: " + e.Message, e.StackTrace);
+                ShutdownSafely();
+                return;
+            }
+            try
+            {
+                //WebManager
+                WebServer MyWebManager = new WebServer(Config.WebAddress, Config.WebPort, Config.WebBanPage, Config.WebErrorPage);
+                if (Config.WebEnabled)
+                {
+                    if (Config.Debug)
+                        Log.Warn("Calling WebServer...");
+                    await MyWebManager.StartWebServer();
+                    if (Config.Debug)
+                        Log.Warn("Webserver Called!");
+                }
+                    
+
             } catch (Exception e)
             {
-                Log.Fatal("Error during patch: " + e.Message,e.StackTrace);
-				Torch.Destroy();
-			}
-        }
+                Log.Warn("WebServer could not start. Please check the WebAddress and WebPort in the config file.\n" + e.Message + "\n" + e.StackTrace);
+            }
 
+
+            
+        }
+        private void ShutdownSafely()
+        {
+            Torch.Stop();
+            Torch.CurrentSession.Torch.Destroy();
+            Torch.Destroy();
+            return;
+        }
         private void SessionChanged(ITorchSession session, TorchSessionState state)
         {
             var mpMan = Torch.CurrentSession.Managers.GetManager<IMultiplayerManagerServer>();
 
-			switch (state)
+            switch (state)
             {
 
                 case TorchSessionState.Loaded:
-                    Log.Info("Session Loaded!");
-                    mpMan.PlayerBanned += IMultiplayerManagerServer_PlayerBanned;
+                Log.Info("Session Loaded!");
+                if (Config.ShutdownIfNotActive)
+                    if (Instance.Database.IsConnected() == false)
+                    {
+                        Log.Fatal("Database is not connected! Cannot start server!");
+                        ShutdownSafely();
+                        return;
+                    } else
+                    {
+                        Log.Info("Database is connected! Continuing...");
+                    }
+                        mpMan.PlayerBanned += IMultiplayerManagerServer_PlayerBanned;
                     break;
 
                 case TorchSessionState.Unloading:
@@ -138,8 +185,10 @@ namespace AdvancedBans
                     {
                         _commandManager.Commands.GetNode(new List<string> { "ban" }, out var banNode);
                         _commandManager.Commands.DeleteNode(banNode);
-                        _commandManager.RegisterCommandModule(typeof(AdvancedBansCommands));
-                    }
+                    //Register Commands
+                    _commandManager.RegisterCommandModule(typeof(AdvancedBansCommands)); // Correct usage of typeof
+                }
+
                     Log.Info("State Created!");
                     break;
             }
@@ -203,37 +252,39 @@ namespace AdvancedBans
 				if (TickCount >= Config.ScanningInt)
 				{
 					TickCount = 0;
-					string DBUser = Config.Username;
-					string DBPassword = Config.Password;
-					string DBAddress = Config.LocalAddress;
-					string DBName = Config.DatabaseName;
-					int DBPort = Config.Port;
 
-					Database MyDatabase = new Database(DBName, DBAddress, DBPort, DBUser, DBPassword);
-					if (Config.Debug)
-					{
-						Log.Warn("Checking expired bans...");
-					}
-					try
-					{
-						MyDatabase.CheckAndUnbanExpiredBans();
-					}
-					catch (NpgsqlException ex)
-					{
-						if (ex.Message == "Multiple primary key defined")
-						{ }
-					}
-					catch (Exception e)
-					{
-						Log.Error(e.Message);
-						Log.Error(e.StackTrace);
-					}
+                    try
+                    {
+                        if (Config.Debug)
+                        {
+                            Log.Warn("Checking expired bans...");
+                        }
+                        try
+                        {
+                            banRepo.CheckAndUnbanExpiredBans();
+                        }
+                        catch (NpgsqlException ex)
+                        {
+                            if (ex.Message == "Multiple primary key defined")
+                            { }
+                        }
 
-					if (Config.Debug)
-					{
-						Log.Warn("Checking if banned player is online...");
-					}
-					try
+                        if (Config.Debug)
+                        {
+                            Log.Warn("Checking if banned player is online...");
+                        }
+                    } catch (Exception e)
+                    {
+                        Log.Error("Failed to check expired bans. (Maybe the database is down)?");
+                        if (Config.Debug)
+                        {
+                            Log.Error(e.Message);
+                            Log.Error(e.StackTrace);
+                        }
+                    }
+
+
+                    try
 					{
 						foreach (MyPlayer.PlayerId player in MySession.Static.Players.GetAllPlayers())
 						{
@@ -241,8 +292,15 @@ namespace AdvancedBans
 							if (mpc.IsPlayerOnline(MySession.Static.Players.TryGetIdentityId(player.SteamId))) {
 
                             
-							    var json = Database.GetBannedBySteamID(player.SteamId);
-							    if (MyDatabase.IsBanned(json))
+							    var json = banRepo.GetBannedBySteamID(player.SteamId);
+                                if (json == null)
+                                {
+                                    if (Config.Debug)
+                                        Log.Error($"Json returned invalid!");
+                                    continue;
+                                }
+
+							    if (banRepo.IsBanned(json))
 							    {
 								    Log.Info($"Banned player ({player.SteamId}) detected. Showing message.");
 

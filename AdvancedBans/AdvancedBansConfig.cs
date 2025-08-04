@@ -7,6 +7,8 @@ namespace AdvancedBans
         private bool _Enabled = true;
         private bool _Debug = false;
         private bool _Override = false;
+        private bool _LogIPs = false; // Whether to log IP addresses of players, will not log IPs if the server is running on EOS / Crossplay mode.
+
 
         private string _DatabaseName = "AdvancedBans";
         private string _LocalAddress = "localhost";
@@ -16,7 +18,7 @@ namespace AdvancedBans
         private int _ScanningInt = 216000; //1 hour
         private int _BanDelay = 10000; //In milliseconds. 15 seconds, this value depends on how much mods you have. If it is a Lobby server, or a lightly modded server, keep it low.
         //Webserver
-        private bool _WebEnabled = true;
+        private bool _WebEnabled = false;
         private string _WebAddress = "localhost";
         private string _WebPort = "8000";
         private string _WebPublicAddress = "+";
@@ -42,6 +44,7 @@ namespace AdvancedBans
     <p><strong>Expire Date:</strong> {{ExpireDate}}</p>
     <p><strong>IsPermanent:</strong> {{IsPermanent}}</p>
     <p><strong>IsExpired:</strong> {{IsExpired}}</p>
+    <p><strong>IP Ban:</strong> {{IPBanned}}</p>
     <p><strong>Reason:</strong> {{Reason}}</p>
     <p><strong>Remaining time:</strong> {{RemainingTime}}</p>
 
@@ -50,6 +53,7 @@ namespace AdvancedBans
     <br>This is your unique Case ID for your ban.
     <br>Sharing your Case ID may affect the processing of your appeal!</p>
     <br><p>Powered by AdvancedBans</p>
+    <br><em>This is a sample ban page, consider editing some elements of it!</em>
 </body>
 </html>";
         private string _WebErrorPage = @"<!DOCTYPE html>
@@ -69,15 +73,10 @@ namespace AdvancedBans
     <h1>No ban details provided or ban is invalid.</h1>
 </body>
 </html>";
-        private bool _WebEnforceRateLimits = false;
-
+        private bool _WebEnforceRateLimits = true;
+        private bool _ShutdownIfNotActive = true; // Refuses connections if Database is not active. It will also prevent startup of the server if it is down.
         //Actions
-        private bool _AM_BanButton = false;
-        private string _CM_BanPlayer = "Player {{user}} ({{userId}}) banned. Ban number: {{banNumber}}";
-        private string _CM_TempbanPlayer = "Player {{user}} ({{userId}}) tempbanned. Ban will expire in {{time}}. Ban number: {{banNumber}}";
-        private string _CM_UnbanPlayer = "Player {{user}} ({{userId}}) with ban number {{banNumber}} unbanned.";
-        private string _CM_HelpMenu = @"AdvancedBans - v.1.0
-Help coming soon.";
+        private bool _AM_BanButton = true;
 
         private bool _ExperimentalPatches = false;
 
@@ -85,6 +84,7 @@ Help coming soon.";
         public bool Enabled { get => _Enabled; set => SetValue(ref _Enabled, value); }
         public bool Debug { get => _Debug; set => SetValue(ref _Debug, value); }
         public bool Override { get => _Override; set => SetValue(ref _Override, value); }
+        public bool LogIPs { get => _Enabled; set => SetValue(ref _LogIPs, value); }
         public string DatabaseName { get => _DatabaseName; set => SetValue(ref _DatabaseName, value); }
         public string LocalAddress { get => _LocalAddress; set => SetValue(ref _LocalAddress, value); }
         public string Username { get => _Username; set => SetValue(ref _Username, value); }
@@ -101,12 +101,8 @@ Help coming soon.";
         public string WebBanPage { get => _WebBanPage; set => SetValue(ref _WebBanPage, value); }
         public string WebErrorPage { get => _WebErrorPage; set => SetValue(ref _WebErrorPage, value); }
 		public bool WebEnforceRateLimits { get => _WebEnforceRateLimits; set => SetValue(ref _WebEnforceRateLimits, value); }
-
-		//Actions
-		public bool AM_BanButton { get => _AM_BanButton; set => SetValue(ref _AM_BanButton, value); }
-        public string CM_BanPlayer { get => _CM_BanPlayer; set => SetValue(ref _CM_BanPlayer, value); }
-        public string CM_TempbanPlayer { get => _CM_TempbanPlayer; set => SetValue(ref _CM_TempbanPlayer, value); }
-        public string CM_UnbanPlayer { get => _CM_UnbanPlayer; set => SetValue(ref _CM_UnbanPlayer, value); }
-        public string CM_HelpMenu { get => _CM_HelpMenu; set => SetValue(ref _CM_HelpMenu, value); }
+        public bool ShutdownIfNotActive { get => _ShutdownIfNotActive; set => SetValue(ref _ShutdownIfNotActive, value); }
+        //Actions
+        public bool AM_BanButton { get => _AM_BanButton; set => SetValue(ref _AM_BanButton, value); }
     }
 }
