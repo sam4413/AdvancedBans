@@ -1,5 +1,4 @@
 ﻿using NLog;
-using ProtoBuf;
 using Sandbox.Game;
 using Sandbox.Game.World;
 using Sandbox.Graphics.GUI;
@@ -195,44 +194,7 @@ namespace AdvancedBans
 		/// <param name="playerid"></param>
 		public static void ShowBanMessage(string caseId, long playerid)
 		{
-            //We need to check if the server is steam. If so, use the torchmod to open the webpage.
-            if (MyPlatformGameSettings.CONSOLE_COMPATIBLE == false)
-			{
-				if (AdvancedBans.Instance.Config.Debug)
-					Log.Warn($"Opening ban message for case ID {caseId} to player {playerid}.");
-                string connectionString = $"https://steamcommunity.com/linkfilter/?url={AdvancedBans.Instance.Config.WebPublicAddress}:{WMPort}/{caseId}";
-                ModCommunication.SendMessageTo(new WebServerMessage(connectionString), MySession.Static.Players.TryGetSteamId(playerid));
-            }
-			else
-			{
-                if (AdvancedBans.Instance.Config.Debug)
-                    Log.Warn($"Normally ban message for case ID {caseId} to player {playerid}.");
-                MyVisualScriptLogicProvider.OpenSteamOverlay($"https://steamcommunity.com/linkfilter/?url={AdvancedBans.Instance.Config.WebPublicAddress}:{WMPort}/{caseId}", playerid);
-            }
-            
-
-            //Else open with default method if EOS (because linkfilter is not available in EOS)
-
+			MyVisualScriptLogicProvider.OpenSteamOverlay($"https://steamcommunity.com/linkfilter/?url=http://{AdvancedBans.Instance.Config.WebPublicAddress}:{WMPort}/{caseId}", playerid);
         }
-
-        [ProtoContract]
-        public class WebServerMessage : MessageBase
-		{
-            [ProtoMember(201)]
-            public string Address { get; set; }
-			public WebServerMessage(string address)
-			{
-				Address = address;
-			}
-            public override void ProcessClient()
-            {
-				MyGuiSandbox.OpenUrlWithFallback(Address, "You have been banned!", false);
-            }
-
-            public override void ProcessServer()
-            {
-            }
-        }
-		
     }
 }

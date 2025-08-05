@@ -69,7 +69,7 @@ namespace AdvancedBans
 
         [Command("tempban", "Tempban a user.")]
         [Permission(MyPromoteLevel.Admin)]
-        public void AB_TempBan(string nameOrSteamId, string date, string reason)
+        public async void AB_TempBan(string nameOrSteamId, string date, string reason)
         {
 
             var isId = ulong.TryParse(nameOrSteamId, out var steamId);
@@ -79,7 +79,7 @@ namespace AdvancedBans
                 var id = MySession.Static.Players.TryGetSteamId(identity.IdentityId);
                 if (id != 0 && (identity.DisplayName == nameOrSteamId || id == steamId))
                 {
-                    string CaseId = Plugin.banRepo.AddUser(id, date, reason, false, false).Result;
+                    string CaseId = await Plugin.banRepo.AddUser(id, date, reason, false, false);
 
                     if (string.IsNullOrEmpty(CaseId) || CaseId == null)
                     {
@@ -103,14 +103,14 @@ namespace AdvancedBans
         }
         [Command("tempbanip", "Tempban a user, as well as their IP.")]
         [Permission(MyPromoteLevel.Admin)]
-        public void AB_TempBanIP(string nameOrSteamId, string date, string reason)
+        public async void AB_TempBanIP(string nameOrSteamId, string date, string reason)
         {
 
             var isId = ulong.TryParse(nameOrSteamId, out var steamId);
 
             if (isId)
             {
-                string CaseId = Plugin.banRepo.AddUser(steamId, "", reason, false, true).Result;
+                string CaseId = await Plugin.banRepo.AddUser(steamId, "", reason, false, true);
                 Context.Respond($"Player permabanned. ({steamId})\nCase ID: {CaseId}");
                 return;
             }
@@ -140,7 +140,7 @@ namespace AdvancedBans
 
         [Command("permban", "Permaban a user.")]
         [Permission(MyPromoteLevel.Admin)]
-        public void AB_Ban(string nameOrSteamId, string reason)
+        public async void AB_Ban(string nameOrSteamId, string reason)
         {
             var isId = ulong.TryParse(nameOrSteamId, out var steamId);
 
@@ -158,7 +158,7 @@ namespace AdvancedBans
                     var id = MySession.Static.Players.TryGetSteamId(identity.IdentityId);
                     if (id != 0 && (identity.DisplayName == nameOrSteamId || id == steamId))
                     {
-                        string CaseId = Plugin.banRepo.AddUser(id, "", reason, true, false).Result;
+                        string CaseId = await Plugin.banRepo.AddUser(id, "", reason, true, false);
 
                         if (!string.IsNullOrEmpty(CaseId))
                         {
@@ -175,7 +175,7 @@ namespace AdvancedBans
 
         [Command("permbanip", "Permaban a user's steam ID, as well as their IP.")]
         [Permission(MyPromoteLevel.Admin)]
-        public void AB_BanIP(string nameOrSteamId, string reason)
+        public async void AB_BanIP(string nameOrSteamId, string reason)
         {
             var isId = ulong.TryParse(nameOrSteamId, out var steamId);
 
@@ -192,7 +192,7 @@ namespace AdvancedBans
                     var id = MySession.Static.Players.TryGetSteamId(identity.IdentityId);
                     if (id != 0 && (identity.DisplayName == nameOrSteamId || id == steamId))
                     {
-                        string CaseId = Plugin.banRepo.AddUser(id, "", reason, true, true).Result;
+                        string CaseId = await Plugin.banRepo.AddUser(id, "", reason, true, true);
 
                         if (!string.IsNullOrEmpty(CaseId))
                         {

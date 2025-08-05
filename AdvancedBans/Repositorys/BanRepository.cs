@@ -231,7 +231,7 @@ namespace AdvancedBans
 
                 string MyUrl = $"http://{WMPublicAddress}:{WebServer.WMPort}/{CaseId}";
 
-                MyVisualScriptLogicProvider.OpenSteamOverlay($"https://steamcommunity.com/linkfilter/?url={MyUrl}", playerId);
+                WebServer.ShowBanMessage(CaseId, playerId);
 
                 MyVisualScriptLogicProvider.RemoveEntity(playerId);
 
